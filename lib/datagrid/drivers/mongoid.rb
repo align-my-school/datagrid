@@ -19,6 +19,11 @@ module Datagrid
         if value.is_a?(Range)
           value = {"$gte" => value.first, "$lte" => value.last}
         end
+
+        if value.any?
+          value = { '$in': value}
+        end
+
         scope.where(attribute => value)
       end
 
@@ -101,4 +106,3 @@ module Datagrid
     end
   end
 end
-
