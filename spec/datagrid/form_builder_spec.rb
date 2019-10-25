@@ -1,5 +1,6 @@
 # encoding: UTF-8
 require 'spec_helper'
+require "action_controller"
 
 class MyFormBuilder
   include Datagrid::FormBuilder
@@ -11,19 +12,15 @@ end
 
 
 describe Datagrid::FormBuilder do
-
   let(:template) do
-    ActionView::Base.new.tap do |v|
-      v.view_paths << File.expand_path("../../../app/views", __FILE__)
-      v.view_paths << File.expand_path("../../support/test_partials", __FILE__)
-    end
+    action_view_template
   end
+
   let(:view) { ActionView::Helpers::FormBuilder.new(:report, _grid, template, view_options)}
   let(:view_options) { {} }
 
 
   describe ".datagrid_filter" do
-
     it "should work for every filter type" do
       Datagrid::Filters::FILTER_TYPES.each do |type, klass|
         expect(Datagrid::FormBuilder.instance_methods.map(&:to_sym)).to include(klass.form_builder_helper_name)

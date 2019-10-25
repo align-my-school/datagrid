@@ -1,16 +1,13 @@
 require 'spec_helper'
 require "active_support/core_ext/hash"
 require "active_support/core_ext/object"
+require "action_controller"
 
 require 'datagrid/renderer'
 
 describe Datagrid::Helper do
   subject do
-    template = ActionView::Base.new
-    allow(template).to receive(:protect_against_forgery?).and_return(false)
-    template.view_paths << File.expand_path("../../../app/views", __FILE__)
-    template.view_paths << File.expand_path("../../support/test_partials", __FILE__)
-    template
+    action_view_template
   end
 
   before(:each) do
@@ -389,14 +386,14 @@ describe Datagrid::Helper do
     end
 
     it "should escape html" do
-      entry.update_attributes!(:name => "<div>hello</div>")
+      entry.update!(:name => "<div>hello</div>")
       expect(subject.datagrid_rows(grid, [entry], :columns => [:name])).to equal_to_dom(<<-HTML)
        <tr><td class="name">&lt;div&gt;hello&lt;/div&gt;</td></tr>
         HTML
     end
 
     it "should not escape safe html" do
-      entry.update_attributes!(:name => "<div>hello</div>")
+      entry.update!(:name => "<div>hello</div>")
       grid.column(:safe_name) do |model|
         model.name.html_safe
       end
