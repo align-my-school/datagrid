@@ -316,9 +316,8 @@ module Datagrid
       def to_csv(*column_names)
         require "csv"
         options = column_names.extract_options!
-        CSV.generate(
-          {:headers => self.header(*column_names), :write_headers => true}.merge!(options)
-        ) do |csv|
+        options = {:headers => self.header(*column_names), :write_headers => true}.merge!(options)
+        CSV.generate(**options) do |csv|
           each_with_batches do |asset|
             csv << row_for(asset, *column_names)
           end
@@ -407,7 +406,7 @@ module Datagrid
       # Defines a column at instance level
       #
       # See Datagrid::Columns::ClassMethods#column for more info
-      def column(name, options_or_query = {}, options = {}, &block) #:nodoc:
+      def column(name, options_or_query = {}, options = {}, &block)
         self.class.define_column(columns_array, name, options_or_query, options, &block)
       end
 
@@ -416,7 +415,7 @@ module Datagrid
         super
       end
 
-      # Returns all columns available for current grid configuration.
+      # Returns all columns that are possible to be displayed for the current grid object
       #
       #   class MyGrid
       #     filter(:search) {|scope, value| scope.full_text_search(value)}
@@ -536,6 +535,8 @@ module Datagrid
       def value_from_html_block(context, asset, column)
         args = []
         remaining_arity = column.html_block.arity
+        remaining_arity = 1 if remaining_arity < 0
+
         asset = decorate(asset)
 
         if column.data?
