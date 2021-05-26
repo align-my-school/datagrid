@@ -24,7 +24,7 @@ module Datagrid
           value = {"$gte" => value.first, "$lte" => value.last}
         end
 
-        if value.any?
+        if value.respond_to?(:any?) && value.any?
           value = { '$in': value}
         end
 
