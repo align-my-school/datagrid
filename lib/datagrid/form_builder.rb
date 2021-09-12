@@ -6,17 +6,19 @@ module Datagrid
     # Returns a form input html for the corresponding filter name
     def datagrid_filter(filter_or_attribute, options = {}, &block)
       filter = datagrid_get_filter(filter_or_attribute)
-      options = add_html_classes(options, filter.name, datagrid_filter_html_class(filter))
+      options = {
+        **filter.input_options,
+        **add_html_classes(options, filter.name, datagrid_filter_html_class(filter)),
+      }
       # Prevent partials option from appearing in HTML attributes
       options.delete(:partials) # Legacy option
       self.send(filter.form_builder_helper_name, filter, options, &block)
     end
 
     # Returns a form label html for the corresponding filter name
-    def datagrid_label(filter_or_attribute, options_or_text = {}, options = {}, &block)
+    def datagrid_label(filter_or_attribute, text = nil, **options, &block)
       filter = datagrid_get_filter(filter_or_attribute)
-      text, options = options_or_text.is_a?(Hash) ? [filter.header, options_or_text] : [options_or_text, options]
-      label(filter.name, text, options, &block)
+      label(filter.name, text || filter.header, **filter.label_options, **options, &block)
     end
 
     protected
@@ -42,7 +44,7 @@ module Datagrid
 
     def datagrid_default_filter(attribute_or_filter, options = {})
       filter = datagrid_get_filter(attribute_or_filter)
-      text_field filter.name, options.reverse_merge(:value => object.filter_value_as_string(filter))
+      text_field filter.name, value: object.filter_value_as_string(filter), **options
     end
 
     def datagrid_enum_filter(attribute_or_filter, options = {}, &block)
@@ -65,16 +67,17 @@ module Datagrid
           }
         )
       else
-        if !options.has_key?(:multiple) && filter.multiple?
-          options[:multiple] = true
-        end
         select(
           filter.name,
           object.select_options(filter) || [],
-          {:include_blank => filter.include_blank,
-           :prompt => filter.prompt,
-           :include_hidden => false},
-           options, &block
+          {
+            include_blank: filter.include_blank,
+            prompt: filter.prompt,
+            include_hidden: false
+          },
+           multiple: filter.multiple?,
+           **options,
+           &block
         )
       end
     end
@@ -119,7 +122,7 @@ module Datagrid
         {:include_blank => false, :include_hidden => false, :prompt => false, :selected => operation },
         add_html_classes(options, "operation")
       )
-      value_input = text_field(filter.name, add_html_classes(options, "value").merge(:value => value))
+      value_input = text_field(filter.name, **add_html_classes(options, "value"), value: value)
       [field_input, operation_input, value_input].join("\n").html_safe
     end
 
@@ -129,7 +132,7 @@ module Datagrid
         # select options format may vary
         value = value.last if value.is_a?(Array)
         # don't render any visible input when there is nothing to choose from
-        hidden_field(name, html_options.merge(value: value))
+        hidden_field(name, **html_options, value: value)
       else
         select(name, variants, select_options, html_options)
       end
@@ -177,7 +180,7 @@ module Datagrid
     end
 
     def datagrid_get_attribute(attribute_or_filter)
-      Utils.string_like?(attribute_or_filter) ?  attribute_or_filter : attribute_or_filter.name
+      Utils.string_like?(attribute_or_filter) ? attribute_or_filter : attribute_or_filter.name
     end
 
     def datagrid_get_filter(attribute_or_filter)

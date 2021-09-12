@@ -19,6 +19,8 @@ describe Datagrid::FormBuilder do
   let(:view) { ActionView::Helpers::FormBuilder.new(:report, _grid, template, view_options)}
   let(:view_options) { {} }
 
+  SELECT_EMPTY_OPTION = Rails.version >= "6.0" ? '<option value="" label=" "></option>' : '<option value=""></option>'
+
 
   describe ".datagrid_filter" do
     it "should work for every filter type" do
@@ -28,7 +30,7 @@ describe Datagrid::FormBuilder do
     end
 
     subject do
-      view.datagrid_filter(_filter, _filter_options, &_filter_block)
+      view.datagrid_filter(_filter, **_filter_options, &_filter_block)
     end
 
     let(:_filter_options) { {} }
@@ -87,6 +89,18 @@ describe Datagrid::FormBuilder do
           '<input value="01/02/2012" class="created_at date_filter" type="text" name="report[created_at]" id="report_created_at"/>'
         )}
       end
+    end
+    context "with input_options" do
+      let(:_filter) { :created_at }
+      let(:_grid) {
+        test_report do
+          scope {Entry}
+          filter(:created_at, :date, input_options: {type: :date})
+        end
+      }
+      it { should equal_to_dom(
+        '<input type="date" class="created_at date_filter" name="report[created_at]" id="report_created_at"/>'
+      )}
     end
 
     context "with integer filter type and range option" do
@@ -244,9 +258,10 @@ describe Datagrid::FormBuilder do
         end
       }
       it { should equal_to_dom(
-        '<select class="category enum_filter" name="report[category]" id="report_category"><option value=""></option>
+        %(<select class="category enum_filter" name="report[category]" id="report_category">
+        #{SELECT_EMPTY_OPTION}
        <option value="first">first</option>
-       <option value="second">second</option></select>'
+       <option value="second">second</option></select>)
       )}
 
       context "when block is given" do
@@ -259,8 +274,9 @@ describe Datagrid::FormBuilder do
           end
         end
         it { should equal_to_dom(
-          '<select class="category enum_filter" name="report[category]" id="report_category"><option value=""></option>
-          <option value="block_value">block option</option></select>'
+          %(<select class="category enum_filter" name="report[category]" id="report_category">
+          #{SELECT_EMPTY_OPTION}
+          <option value="block_value">block option</option></select>)
         )}
       end
       context "when first option is selected" do
@@ -268,9 +284,10 @@ describe Datagrid::FormBuilder do
           _grid.category = "first"
         end
         it { should equal_to_dom(
-          '<select class="category enum_filter" name="report[category]" id="report_category"><option value=""></option>
+          %(<select class="category enum_filter" name="report[category]" id="report_category">
+          #{SELECT_EMPTY_OPTION}
        <option selected value="first">first</option>
-       <option value="second">second</option></select>'
+       <option value="second">second</option></select>)
         )}
       end
       context "with include_blank option set to false" do
@@ -360,9 +377,10 @@ describe Datagrid::FormBuilder do
         end
       end
       it { should equal_to_dom(
-        '<select class="disabled extended_boolean_filter" name="report[disabled]" id="report_disabled"><option value=""></option>
-       <option value="YES">Yes</option>
-       <option value="NO">No</option></select>'
+        %(<select class="disabled extended_boolean_filter" name="report[disabled]" id="report_disabled">
+          #{SELECT_EMPTY_OPTION}
+          <option value="YES">Yes</option>
+          <option value="NO">No</option></select>)
       )}
     end
     context "with string filter" do
@@ -430,7 +448,7 @@ describe Datagrid::FormBuilder do
       let(:_filter) { :group_id }
       let(:expected_html) do
         <<-HTML
-<select class="group_id enum_filter" multiple name="report[group_id][]" id="report_group_id">
+<select multiple class="group_id enum_filter" name="report[group_id][]" id="report_group_id">
 <option value="hello">hello</option></select>
         HTML
       end
@@ -453,7 +471,7 @@ describe Datagrid::FormBuilder do
       let(:_filter) { :column_names }
       let(:expected_html) do
         <<-HTML
-<select class="column_names enum_filter" multiple name="report[column_names][]" id="report_column_names"><option selected value="id">Id</option>
+<select multiple class="column_names enum_filter" name="report[column_names][]" id="report_column_names"><option selected value="id">Id</option>
 <option selected value="name">Name</option>
 <option value="category">Category</option></select>
         HTML
@@ -496,7 +514,7 @@ DOM
         options = filter_options
         test_report do
           scope {Entry}
-          filter(:condition, :dynamic, options)
+          filter(:condition, :dynamic, **options)
         end
       end
       let(:_filter) { :condition }
@@ -585,7 +603,13 @@ DOM
       test_report do
         scope {Entry}
         filter(:name, :string)
+        filter(:created_at, :date, label_options: {class: 'js-date-selector'})
       end
+    end
+    it "should generate label for filter" do
+      expect(view.datagrid_label(:created_at)).to equal_to_dom(
+        '<label class="js-date-selector" for="report_created_at">Created at</label>'
+      )
     end
     it "should generate label for filter" do
       expect(view.datagrid_label(:name)).to equal_to_dom(
