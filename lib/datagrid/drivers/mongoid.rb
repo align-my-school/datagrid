@@ -68,7 +68,7 @@ module Datagrid
         return nil unless type
         {
           [BigDecimal , String, Symbol, Range, Array, Hash, ] => :string,
-          [Boolean] => :boolean,
+          # [Boolean] => :boolean,
 
           [Date] => :date,
 
