@@ -3,28 +3,20 @@ source "https://rubygems.org"
 gemspec
 
 group :development do
-
-  gem "bundler"
+  gem "rails", "~> #{ENV['TEST_RAILS_VERSION']}" if ENV["TEST_RAILS_VERSION"]
   gem "bump"
 
-  #gem "json", ">= 1.9"
   gem "pry-byebug"
 
-  gem "rspec", ">= 3"
+  gem "rspec"
   gem "nokogiri" # used to test html output
 
-  if RUBY_VERSION >= "2.5"
-    gem "sqlite3", "~> 1.4", platform: :mri
-  else
-    gem "sqlite3", "~> 1.3.6"
-  end
+  gem "sqlite3", platform: :mri
   gem "sequel"
+  gem "activerecord"
 
   group :mongo do
     gem "mongoid"
-    #gem "mongo_mapper", "~> 0.13.0"
     gem "bson"
-    gem "bson_ext"
   end
-
 end

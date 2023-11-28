@@ -1,10 +1,12 @@
 require "datagrid/columns"
 
 module Datagrid
+  # Raised when grid order value is incorrect
   class OrderUnsupported < StandardError
   end
   module Ordering
 
+    # @!visibility private
     def self.included(base)
       base.extend         ClassMethods
       base.class_eval do
@@ -25,39 +27,38 @@ module Datagrid
         alias descending? descending
 
       end
-      base.send :include, InstanceMethods
-    end # self.included
+      base.include InstanceMethods
+    end
 
+    # @!visibility private
     module ClassMethods
-
       def order_unsupported(name, reason)
         raise Datagrid::OrderUnsupported, "Can not sort #{self.inspect} by ##{name}: #{reason}"
       end
-
-    end # ClassMethods
+    end
 
     module InstanceMethods
 
-      def assets # :nodoc:
+      # @!visibility private
+      def assets
         check_order_valid!
         apply_order(super)
       end
 
-      # Returns a column definition that is currently used to order assets
-      #
+      # @return [Datagrid::Columns::Column, nil] a column definition that is currently used to order assets
+      # @example
       #   class MyGrid
       #     scope { Model }
       #     column(:id)
       #     column(:name)
       #   end
-      #   MyGrid.new(:order => "name").order_column # => #<Column name: "name", ...>
-      #
+      #   MyGrid.new(order: "name").order_column # => #<Column name: "name", ...>
       def order_column
-        order && column_by_name(order)
+        order ? column_by_name(order) : nil
       end
 
-      # Returns true if given grid is ordered by given column.
-      # <tt>column</tt> can be given as name or as column object
+      # @param column [String, Datagrid::Columns::Column]
+      # @return [Boolean] true if given grid is ordered by given column.
       def ordered_by?(column)
         order_column == column_by_name(column)
       end
@@ -127,7 +128,6 @@ module Datagrid
           self.class.order_unsupported(order_column.name, "Order option proc can not handle more than one argument")
         end
       end
-    end # InstanceMethods
-
+    end
   end
 end

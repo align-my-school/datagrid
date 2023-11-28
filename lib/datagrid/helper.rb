@@ -4,30 +4,28 @@ require "action_view"
 module Datagrid
   module Helper
 
-    # Returns individual cell value from the given grid, column name and model
-    # Allows to render custom HTML layout for grid data
-    #
+    # @param grid [Datagrid] grid object
+    # @param column [Datagrid::Columns::Column, String, Symbol] column name
+    # @param model [Object] an object from grid scope
+    # @return [Object] individual cell value from the given grid, column name and model
+    # @example
     #   <ul>
     #     <% @grid.columns.each do |column|
     #       <li><%= column.header %>: <%= datagrid_value(@grid, column.name, @resource %></li>
     #     <% end %>
     #   </ul>
-    #
-    def datagrid_value(grid, column_name, model)
-      datagrid_renderer.format_value(grid, column_name, model)
+    def datagrid_value(grid, column, model)
+      datagrid_renderer.format_value(grid, column, model)
     end
 
-    def datagrid_format_value(grid, column_name, model) #:nodoc:
-      datagrid_value(grid, column_name, model)
+    # @!visibility private
+    def datagrid_format_value(grid, column, model)
+      datagrid_value(grid, column, model)
     end
 
     # Renders html table with columns defined in grid class.
     # In the most common used you need to pass paginated collection
     # to datagrid table because datagrid do not have pagination compatibilities:
-    #
-    #   assets = grid.assets.page(params[:page])
-    #   datagrid_table(grid, assets, options)
-    #
     # Supported options:
     #
     # * <tt>:html</tt> - hash of attributes for <table> tag
@@ -38,6 +36,12 @@ module Datagrid
     #   and needs different columns. Default: all defined columns.
     # * <tt>:partials</tt> - Path for partials lookup.
     #   Default: 'datagrid'.
+    # @param grid [Datagrid] grid object
+    # @param assets [Array] objects from grid scope
+    # @return [String] table tag HTML markup
+    # @example
+    #   assets = grid.assets.page(params[:page])
+    #   datagrid_table(grid, assets, options)
     def datagrid_table(grid, assets = grid.assets, **options)
       datagrid_renderer.table(grid, assets, **options)
     end
@@ -48,8 +52,13 @@ module Datagrid
     #
     # * <tt>:order</tt> - display ordering controls built-in into header
     #   Default: true
+    # * <tt>:columns</tt> - Array of column names to display.
+    #   Used in case when same grid class is used in different places
+    #   and needs different columns. Default: all defined columns.
     # * <tt>:partials</tt> - Path for partials lookup.
     #   Default: 'datagrid'.
+    # @param grid [Datagrid] grid object
+    # @return [String] HTML table header tag markup
     def datagrid_header(grid, options = {})
       datagrid_renderer.header(grid, options)
     end
@@ -66,6 +75,7 @@ module Datagrid
     # * <tt>:partials</tt> - Path for partials lookup.
     #   Default: 'datagrid'.
     #
+    # @example
     #   = datagrid_rows(grid) # Generic table rows Layout
     #
     #   = datagrid_rows(grid) do |row| # Custom Layout
@@ -93,73 +103,45 @@ module Datagrid
     # * <tt>:partials</tt> - Path for form partial lookup.
     #   Default: 'datagrid'.
     # * All options supported by Rails <tt>form_for</tt> helper
+    # @param grid [Datagrid] grid object
+    # @return [String] form HTML tag markup
     def datagrid_form_for(grid, options = {})
       datagrid_renderer.form_for(grid, options)
     end
 
     # Provides access to datagrid columns data.
-    #
-    #   # Suppose that <tt>grid</tt> has first_name and last_name columns
+    # Used in case you want to build html table completelly manually
+    # @param grid [Datagrid] grid object
+    # @param asset [Object] object from grid scope
+    # @param block [Proc] block with Datagrid::Helper::HtmlRow as an argument returning a HTML markup as a String
+    # @return [Datagrid::Helper::HtmlRow, String] captured HTML markup if block given otherwise row object
+    # @example
+    #   # Suppose that grid has first_name and last_name columns
     #   <%= datagrid_row(grid, user) do |row| %>
     #     <tr>
     #       <td><%= row.first_name %></td>
     #       <td><%= row.last_name %></td>
     #     </tr>
     #   <% end %>
-    #
-    # Used in case you want to build html table completelly manually
-    def datagrid_row(grid, asset, &block)
-      HtmlRow.new(self, grid, asset).tap do |row|
-        if block_given?
-          return capture(row, &block)
-        end
-      end
+    # @example
+    #   <% row = datagrid_row(grid, user) %>
+    #   First Name: <%= row.first_name %>
+    #   Last Name: <%= row.last_name %>
+    # @example
+    #   <%= datagrid_row(grid, user, columns: [:first_name, :last_name, :actions]) %>
+    def datagrid_row(grid, asset, **options, &block)
+      datagrid_renderer.row(grid, asset, **options, &block)
     end
 
     # Generates an ascending or descending order url for the given column
+    # @param grid [Datagrid] grid object
+    # @param column [Datagrid::Columns::Column, String, Symbol] column name
+    # @param descending [Boolean] specifies order direction. Ascending if false, otherwise descending.
+    # @return [String] order layout HTML markup
     def datagrid_order_path(grid, column, descending)
       datagrid_renderer.order_path(grid, column, descending, request)
     end
 
-    # Represents a datagrid row that provides access to column values for the given asset
-    #
-    #   row = datagrid_row(grid, user)
-    #   row.first_name # => "<strong>Bogdan</strong>"
-    #   row.grid       # => Grid object
-    #   row.asset      # => User object
-    class HtmlRow
-
-      include Enumerable
-
-      attr_reader :grid, :asset
-
-      def initialize(context, grid, asset) # :nodoc:
-        @context = context
-        @grid = grid
-        @asset = asset
-      end
-
-      # Return a column value for given column name
-      def get(column)
-        @context.datagrid_value(@grid, column, @asset)
-      end
-
-      # Iterates over all column values that are available in the row
-      def each
-        @grid.columns.each do |column|
-          yield(get(column))
-        end
-      end
-
-      protected
-      def method_missing(method, *args, &blk)
-        if column = @grid.column_by_name(method)
-          get(column)
-        else
-          super
-        end
-      end
-    end
 
     protected
 

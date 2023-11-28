@@ -1,6 +1,7 @@
 module Datagrid
   module Drivers
-    class Mongoid < AbstractDriver #:nodoc:
+    # @!visibility private
+    class Mongoid < AbstractDriver
 
       def self.match?(scope)
         return false unless defined?(::Mongoid)
@@ -68,7 +69,7 @@ module Datagrid
         return nil unless type
         {
           [BigDecimal , String, Symbol, Range, Array, Hash, ] => :string,
-          # [Boolean] => :boolean,
+          [::Mongoid::Boolean] => :boolean,
 
           [Date] => :date,
 

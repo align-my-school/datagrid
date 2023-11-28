@@ -2,6 +2,23 @@ require 'spec_helper'
 require "action_controller/metal/strong_parameters"
 
 describe Datagrid::Core do
+  describe '#original_scope' do
+    it 'does not wrap instance scope' do
+      grid = test_report do
+        scope { Entry }
+      end
+
+      expect(grid.original_scope).to eq(Entry)
+    end
+
+    it 'does not wrap class scope' do
+      klass = test_report_class do
+        scope { Entry }
+      end
+
+      expect(klass.original_scope).to eq(Entry)
+    end
+  end
 
   context 'with 2 persisted entries' do
     before { 2.times { Entry.create } }
@@ -15,6 +32,14 @@ describe Datagrid::Core do
     end
 
     describe '#scope' do
+
+      it "wraps scope" do
+        grid = test_report do
+          scope { Entry }
+        end
+        expect(grid.scope).to be_kind_of(ActiveRecord::Relation)
+      end
+
       context 'in the class' do
         let(:report) { report_class.new }
 
@@ -34,7 +59,6 @@ describe Datagrid::Core do
             expect(Ns83827::TestGrid.new.assets.order_values).to eq(["id asc"])
           end
         end
-
       end
 
       context 'changes scope on the fly' do
