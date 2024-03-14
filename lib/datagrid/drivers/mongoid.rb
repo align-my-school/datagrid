@@ -25,9 +25,11 @@ module Datagrid
           value = {"$gte" => value.first, "$lte" => value.last}
         end
 
-        if value.respond_to?(:any?) && value.any?
-          value = { '$in': value}
-        end
+        #--- custom modification by chris
+        # if value.respond_to?(:any?) && value.any?
+        #   value = { '$in': value}
+        # end
+        #--- custom modification by chris
 
         scope.where(attribute => value)
       end
