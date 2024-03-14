@@ -8,12 +8,12 @@ class MongoidEntry
   include Mongoid::Document
   include Mongoid::Timestamps
 
-  field :group_id, :type => Integer
-  field :name, :type => String
-  field :category, :type => String
-  field :disabled, :default => false, :type => Boolean
-  field :confirmed, :default => false, :type => Boolean
-  field :shipping_date, :type => Time
+  field :group_id, type: Integer
+  field :name, type: String
+  field :category, type: String
+  field :disabled, default: false, type: Boolean
+  field :confirmed, default: false, type: Boolean
+  field :shipping_date, type: Time
 
 end
 
@@ -25,7 +25,7 @@ class MongoidGrid
   end
 
   filter :name
-  integer_range_filters(:group_id, {:default => 0}, {:default => 100})
+  filter(:group_id, :integer, range: true, default: 0..100)
   filter :disabled, :xboolean
 
   column :name

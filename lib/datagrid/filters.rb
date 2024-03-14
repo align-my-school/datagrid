@@ -5,7 +5,6 @@ module Datagrid
 
     require "datagrid/filters/base_filter"
     require "datagrid/filters/enum_filter"
-    require "datagrid/filters/boolean_enum_filter"
     require "datagrid/filters/extended_boolean_filter"
     require "datagrid/filters/boolean_filter"
     require "datagrid/filters/date_filter"
@@ -18,34 +17,32 @@ module Datagrid
     require "datagrid/filters/dynamic_filter"
 
     FILTER_TYPES = {
-      :date => Filters::DateFilter,
-      :datetime => Filters::DateTimeFilter,
-      :string => Filters::StringFilter,
-      :default => Filters::DefaultFilter,
-      :eboolean => Filters::BooleanEnumFilter ,
-      :xboolean => Filters::ExtendedBooleanFilter ,
-      :boolean => Filters::BooleanFilter ,
-      :integer => Filters::IntegerFilter,
-      :enum => Filters::EnumFilter,
-      :float => Filters::FloatFilter,
-      :dynamic => Filters::DynamicFilter
+      date: Filters::DateFilter,
+      datetime: Filters::DateTimeFilter,
+      string: Filters::StringFilter,
+      default: Filters::DefaultFilter,
+      xboolean: Filters::ExtendedBooleanFilter ,
+      boolean: Filters::BooleanFilter ,
+      integer: Filters::IntegerFilter,
+      enum: Filters::EnumFilter,
+      float: Filters::FloatFilter,
+      dynamic: Filters::DynamicFilter
     }
 
-    class DefaultFilterScope
-    end
+    DEFAULT_FILTER_BLOCK = Object.new
 
-    def self.included(base) #:nodoc:
-      base.extend         ClassMethods
+    # @!visibility private
+    def self.included(base)
+      base.extend ClassMethods
       base.class_eval do
 
         include Datagrid::Core
         include Datagrid::Filters::CompositeFilters
-        class_attribute :filters_array
-        self.filters_array = []
+        class_attribute :filters_array, default: []
 
       end
-      base.send :include, InstanceMethods
-    end # self.included
+      base.include InstanceMethods
+    end
 
     module ClassMethods
 
@@ -95,7 +92,8 @@ module Datagrid
       #   Accepts a block or a symbol with an instance method name
       # * <tt>:unless</tt> - specify the reverse condition when the filter can be dislayed and used.
       #   Accepts a block or a symbol with an instance method name
-      # * <tt>:input_options</tt> - options passed when rendering html input tag attributes
+      # * <tt>:input_options</tt> - options passed when rendering html input tag attributes.
+      #   Use <tt>input_options.type</tt> to control input type including <tt>textarea</tt>.
       # * <tt>:label_options</tt> - options passed when rendering html label tag attributes
       #
       # See: https://github.com/bogdan/datagrid/wiki/Filters for examples
@@ -113,7 +111,7 @@ module Datagrid
       end
 
       def default_filter
-        DefaultFilterScope.new
+        DEFAULT_FILTER_BLOCK
       end
 
       def inspect
@@ -137,11 +135,12 @@ module Datagrid
           "#{filter.name}: #{filter.type}"
         end.join(", ")
       end
-    end # ClassMethods
+    end
 
     module InstanceMethods
 
-      def initialize(*args, &block) # :nodoc:
+      # @!visibility private
+      def initialize(*args, &block)
         self.filters_array = self.class.filters_array.clone
         self.filters_array.each do |filter|
           self[filter.name] = filter.default(self)
@@ -149,7 +148,8 @@ module Datagrid
         super(*args, &block)
       end
 
-      def assets # :nodoc:
+      # @!visibility private
+      def assets
         apply_filters(super, filters)
       end
 
@@ -224,7 +224,6 @@ module Datagrid
           filter.apply(self, result, filter_value(filter))
         end
       end
-    end # InstanceMethods
-
+    end
   end
 end

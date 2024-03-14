@@ -1,4 +1,5 @@
 module Datagrid
+  # @!visibility private
   module Utils # :nodoc:
     class << self
 
@@ -37,15 +38,12 @@ module Datagrid
       end
 
       def add_html_classes(options, *classes)
+        return options if classes.empty?
         options = options.clone
-        options[:class] ||= ""
-        if options[:class].is_a?(Array)
-          options[:class] += classes
-        else
-          # suppose that it is a String
-          options[:class] += " " unless options[:class].blank?
-          options[:class] += classes.join(" ")
-        end
+        options[:class] ||= []
+        array = options[:class].is_a?(Array)
+        value = [*options[:class], *classes]
+        options[:class] = array ? value : value.join(" ")
         options
       end
 
@@ -116,9 +114,9 @@ module Datagrid
         if !value
           value
         elsif value.is_a?(Array)
-          [value.first.try(:beginning_of_day), value.last.try(:end_of_day)]
+          [value.first&.beginning_of_day, value.last&.end_of_day]
         elsif value.is_a?(Range)
-          (value.first.beginning_of_day..value.last.end_of_day)
+          (value.begin&.beginning_of_day..value.end&.end_of_day)
         else
           value.beginning_of_day..value.end_of_day
         end

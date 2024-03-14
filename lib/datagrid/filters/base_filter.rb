@@ -1,8 +1,12 @@
+# An error raise when datagrid filter is defined incorrectly and
+# causes filtering chain to be broken
 class Datagrid::FilteringError < StandardError
 end
 
-class Datagrid::Filters::BaseFilter #:nodoc:
+# @!visibility private
+class Datagrid::Filters::BaseFilter
 
+  class_attribute :input_helper_name, instance_writer: false
   attr_accessor :grid_class, :options, :block, :name
 
   def initialize(grid_class, name, options = {}, &block)
@@ -26,7 +30,7 @@ class Datagrid::Filters::BaseFilter #:nodoc:
     result = execute(value, scope, grid_object)
 
     return scope unless result
-    if result.is_a?(Datagrid::Filters::DefaultFilterScope)
+    if result == Datagrid::Filters::DEFAULT_FILTER_BLOCK
       result = default_filter(value, scope, grid_object)
     end
     unless grid_object.driver.match?(result)
@@ -151,7 +155,7 @@ class Datagrid::Filters::BaseFilter #:nodoc:
     when String
       value.split(separator)
     when Range
-      [value.first, value.last]
+      [value.begin, value.end]
     when Array
       value
     else
@@ -169,8 +173,8 @@ class Datagrid::Filters::BaseFilter #:nodoc:
 
   def default_filter(value, scope, grid)
     return nil if dummy?
-    if !driver.has_column?(scope, name) && driver.to_scope(scope).respond_to?(name)
-      driver.to_scope(scope).send(name, value)
+    if !driver.has_column?(scope, name) && scope.respond_to?(name, true)
+      scope.public_send(name, value)
     else
       default_filter_where(scope, value)
     end

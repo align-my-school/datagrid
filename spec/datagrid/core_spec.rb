@@ -2,6 +2,23 @@ require 'spec_helper'
 require "action_controller/metal/strong_parameters"
 
 describe Datagrid::Core do
+  describe '#original_scope' do
+    it 'does not wrap instance scope' do
+      grid = test_report do
+        scope { Entry }
+      end
+
+      expect(grid.original_scope).to eq(Entry)
+    end
+
+    it 'does not wrap class scope' do
+      klass = test_report_class do
+        scope { Entry }
+      end
+
+      expect(klass.original_scope).to eq(Entry)
+    end
+  end
 
   context 'with 2 persisted entries' do
     before { 2.times { Entry.create } }
@@ -15,6 +32,14 @@ describe Datagrid::Core do
     end
 
     describe '#scope' do
+
+      it "wraps scope" do
+        grid = test_report do
+          scope { Entry }
+        end
+        expect(grid.scope).to be_kind_of(ActiveRecord::Relation)
+      end
+
       context 'in the class' do
         let(:report) { report_class.new }
 
@@ -34,7 +59,6 @@ describe Datagrid::Core do
             expect(Ns83827::TestGrid.new.assets.order_values).to eq(["id asc"])
           end
         end
-
       end
 
       context 'changes scope on the fly' do
@@ -77,11 +101,11 @@ describe Datagrid::Core do
       class InspectTest
         include Datagrid
         scope {Entry}
-        filter(:created_at, :date, :range => true)
+        filter(:created_at, :date, range: true)
         column(:name)
       end
 
-      grid = InspectTest.new(:created_at => ['2014-01-01', '2014-08-05'], :descending => true, :order => 'name')
+      grid = InspectTest.new(created_at: ['2014-01-01', '2014-08-05'], descending: true, order: 'name')
       expect(grid.inspect).to eq('#<InspectTest order: :name, descending: true, created_at: [Wed, 01 Jan 2014, Tue, 05 Aug 2014]>')
     end
   end
@@ -116,10 +140,10 @@ describe Datagrid::Core do
       grid = test_report do
         scope {Entry}
         column(:id)
-        dynamic {
+        dynamic do
           column(:name)
           column(:category)
-        }
+        end
       end
 
       expect(grid.columns.map(&:name)).to eq([:id, :name, :category])
@@ -130,13 +154,13 @@ describe Datagrid::Core do
     end
 
     it "has access to attributes" do
-      grid = test_report(:attribute_name => 'value') do
+      grid = test_report(attribute_name: 'value') do
         scope {Entry}
         datagrid_attribute :attribute_name
-        dynamic {
+        dynamic do
           value = attribute_name
           column(:name) { value }
-        }
+        end
       end
 
       expect(grid.data_value(:name, Entry.create!)).to eq('value')
@@ -157,6 +181,22 @@ describe Datagrid::Core do
       end
 
       expect(grid.assets.limit_value).to eq(2)
+    end
+
+    it "has access to grid attributes within scope" do
+      grid = test_report(name: 'one') do
+        scope {Entry}
+        dynamic do
+          scope do |s|
+            s.where(name: name)
+          end
+        end
+        filter(:name, dummy: true)
+      end
+      one = Entry.create!(name: 'one')
+      two = Entry.create!(name: 'two')
+      expect(grid.assets).to include(one)
+      expect(grid.assets).to_not include(two)
     end
   end
 

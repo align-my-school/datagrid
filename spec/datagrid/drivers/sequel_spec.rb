@@ -3,7 +3,7 @@ require 'spec_helper'
 describe Datagrid::Drivers::Sequel do
 
   describe ".match?" do
-    
+
     subject { described_class }
 
     it {should be_match(SequelEntry)}
@@ -34,6 +34,17 @@ describe Datagrid::Drivers::Sequel do
       )
     end
 
+    it "supports pagination" do
+      class PaginationTest
+        include Datagrid
+        scope { SequelEntry }
+      end
+      grid = PaginationTest.new do |scope|
+        scope.paginate(1,25)
+      end
+      expect(grid.rows.to_a).to be_kind_of(Array)
+      expect(grid.assets.to_a).to be_kind_of(Array)
+    end
 
     describe '#assets' do
       subject { super().assets }
@@ -65,7 +76,7 @@ describe Datagrid::Drivers::Sequel do
 
 
     describe "when some filters specified" do
-      let(:_attributes) { {:from_group_id => 3} }
+      let(:_attributes) { {group_id: 3..100} }
 
       describe '#assets' do
         subject { super().assets.map(&:id) }
@@ -101,7 +112,7 @@ describe Datagrid::Drivers::Sequel do
     it "should support batch_size" do
       report = test_report do
         scope { SequelEntry }
-        self.batch_size = 1 
+        self.batch_size = 1
         column(:name)
       end
 

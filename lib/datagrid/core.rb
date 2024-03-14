@@ -1,30 +1,27 @@
 require "datagrid/drivers"
 require "active_support/core_ext/class/attribute"
+require "active_model/attribute_assignment"
 
 module Datagrid
   module Core
 
+    # @!visibility private
     def self.included(base)
-      base.extend         ClassMethods
+      base.extend ClassMethods
       base.class_eval do
         class_attribute :scope_value
-
-        class_attribute :datagrid_attributes, instance_writer: false
-        self.datagrid_attributes = []
-
-        class_attribute :dynamic_block, :instance_writer => false
-        class_attribute :forbidden_attributes_protection, instance_writer: false
-        self.forbidden_attributes_protection = false
-        if defined?(::ActiveModel::AttributeAssignment)
-          include ::ActiveModel::AttributeAssignment
-        end
+        class_attribute :datagrid_attributes, instance_writer: false, default: []
+        class_attribute :dynamic_block, instance_writer: false
+        class_attribute :forbidden_attributes_protection, instance_writer: false, default: false
+        include ::ActiveModel::AttributeAssignment
       end
-      base.send :include, InstanceMethods
-    end # self.included
+      base.include InstanceMethods
+    end
 
     module ClassMethods
 
-      def datagrid_attribute(name, &block) #:nodoc:
+      # @!visibility private
+      def datagrid_attribute(name, &block)
         unless datagrid_attributes.include?(name)
           block ||= lambda do |value|
             value
@@ -41,6 +38,11 @@ module Datagrid
       end
 
       # Defines a scope at class level
+      # @return [void]
+      # @example
+      #   scope { User }
+      #   scope { Project.where(deleted: false) }
+      #   scope { Project.preload(:stages) }
       def scope(&block)
         if block
           current_scope = scope_value
@@ -49,17 +51,28 @@ module Datagrid
           }
           self
         else
-          check_scope_defined!
-          scope_value.call
+          scope = original_scope
+          driver.to_scope(scope)
         end
       end
 
-      def driver #:nodoc:
-        @driver ||= Drivers::AbstractDriver.guess_driver(scope).new
+      # @!visibility private
+      def original_scope
+        check_scope_defined!
+        scope_value.call
+      end
+
+      # @!visibility private
+      def driver
+        @driver ||= Drivers::AbstractDriver.guess_driver(scope_value.call).new
       end
 
       # Allows dynamic columns definition, that could not be defined at class level
-      #
+      # Columns that depend on the database state or third party service
+      # can be defined this way.
+      # @param block [Proc] block that defines dynamic columns
+      # @return [void]
+      # @example
       #   class MerchantsGrid
       #
       #     scope { Merchant }
@@ -69,11 +82,14 @@ module Datagrid
       #     dynamic do
       #       PurchaseCategory.all.each do |category|
       #         column(:"#{category.name.underscore}_sales") do |merchant|
-      #           merchant.purchases.where(:category_id => category.id).count
+      #           merchant.purchases.where(category_id: category.id).count
       #         end
       #       end
       #     end
       #   end
+      #
+      #   ProductCategory.create!(name: 'Swimwear')
+      #   ProductCategory.create!(name: 'Sportswear')
       #
       #   grid = MerchantsGrid.new
       #   grid.data # => [
@@ -95,6 +111,7 @@ module Datagrid
       end
 
       protected
+
       def check_scope_defined!(message = nil)
         message ||= "#{self}.scope is not defined"
         raise(Datagrid::ConfigurationError, message) unless scope_value
@@ -105,7 +122,7 @@ module Datagrid
         child_class.datagrid_attributes = self.datagrid_attributes.clone
       end
 
-    end # ClassMethods
+    end
 
     module InstanceMethods
 
@@ -122,8 +139,8 @@ module Datagrid
         end
       end
 
-      # Returns a hash of grid attributes including filter values
-      # and ordering values
+
+      # @return [Hash<Symbol, Object>] grid attributes including filter values and ordering values
       def attributes
         result = {}
         self.datagrid_attributes.each do |name|
@@ -132,38 +149,37 @@ module Datagrid
         result
       end
 
-      # Alias for <tt>send</tt> method
-      def [](attribute)
-        self.send(attribute)
-      end
-
-      def []=(attribute, value)
-        self.send(:"#{attribute}=", value)
-      end
-
-      # Returns a scope(e.g ActiveRecord::Relation) with all applied filters
-      def assets
-        driver.to_scope(scope)
-      end
-
-
       # Updates datagrid attributes with a passed hash argument
+      # @param attributes [Hash<Symbol, Object>]
+      # @example
+      #   grid = MyGrid.new
+      #   grid.attributes = {first_name: 'John', last_name: 'Smith'}
+      #   grid.first_name # => 'John'
+      #   grid.last_name # => 'Smith'
       def attributes=(attributes)
-        if respond_to?(:assign_attributes)
-          if !forbidden_attributes_protection && attributes.respond_to?(:permit!)
-            attributes.permit!
-          end
-          assign_attributes(attributes)
-        else
-          attributes.each do |name, value|
-            self[name] = value
-          end
-          self
-        end
+        super(attributes)
+      end
+
+      # @return [Object] Any datagrid attribute value
+      def [](attribute)
+        self.public_send(attribute)
+      end
+
+      # Assigns any datagrid attribute
+      # @param attribute [Symbol, String] Datagrid attribute name
+      # @param value [Object] Datagrid attribute value
+      # @return [void]
+      def []=(attribute, value)
+        self.public_send(:"#{attribute}=", value)
+      end
+
+      # @return [Object] a scope relation (e.g ActiveRecord::Relation) with all applied filters
+      def assets
+        scope
       end
 
       # Returns serializable query arguments skipping all nil values
-      #
+      # @example
       #   grid = ProductsGrid.new(category: 'dresses', available: true)
       #   grid.as_query # => {category: 'dresses', available: true}
       def as_query
@@ -174,8 +190,8 @@ module Datagrid
         attributes
       end
 
-      # Returns query parameters to link this grid from a page
-      #
+      # @return [Hash<Symbol, Hash<Symbol, Object>>] query parameters to link this grid from a page
+      # @example
       #   grid = ProductsGrid.new(category: 'dresses', available: true)
       #   Rails.application.routes.url_helpers.products_path(grid.query_params)
       #     # => "/products?products_grid[category]=dresses&products_grid[available]=true"
@@ -184,19 +200,18 @@ module Datagrid
       end
 
       # Redefines scope at instance level
-      #
+      # @example
       #   class MyGrid
       #     scope { Article.order('created_at desc') }
       #   end
       #
       #   grid = MyGrid.new
       #   grid.scope do |scope|
-      #     scope.where(:author_id => current_user.id)
+      #     scope.where(author_id: current_user.id)
       #   end
       #   grid.assets
       #       # => SELECT * FROM articles WHERE author_id = ?
       #       #    ORDER BY created_at desc
-      #
       def scope(&block)
         if block_given?
           current_scope = scope
@@ -205,29 +220,39 @@ module Datagrid
           }
           self
         else
-          check_scope_defined!
-          scope_value.call
+          scope = original_scope
+          driver.to_scope(scope)
         end
       end
 
+      # @!visibility private
+      def original_scope
+        check_scope_defined!
+        scope_value.call
+      end
+
       # Resets current instance scope to default scope defined in a class
+      # @return [void]
       def reset_scope
         self.scope_value = self.class.scope_value
       end
 
-      # Returns true if the scope was redefined for this instance of grid object
+      # @return [Boolean] true if the scope was redefined for this instance of grid object
       def redefined_scope?
         self.class.scope_value != scope_value
       end
 
-      def driver #:nodoc:
+      # @!visibility private
+      def driver
         self.class.driver
       end
 
-      def check_scope_defined!(message = nil) #:nodoc:
+      # @!visibility private
+      def check_scope_defined!(message = nil)
         self.class.send :check_scope_defined!, message
       end
 
+      # @return [String] a datagrid attributes and their values in inspection form
       def inspect
         attrs = attributes.map do |key, value|
           "#{key}: #{value.inspect}"
@@ -240,6 +265,11 @@ module Datagrid
           attributes == other.attributes &&
           scope == other.scope
       end
-    end # InstanceMethods
+
+      protected
+      def sanitize_for_mass_assignment(attributes)
+        forbidden_attributes_protection ? super(attributes) : attributes
+      end
+    end
   end
 end

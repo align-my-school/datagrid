@@ -1,14 +1,14 @@
 module Datagrid
   module Drivers
-    class AbstractDriver #:nodoc:
+    # @!visibility private
+    class AbstractDriver
 
       TIMESTAMP_CLASSES = [DateTime, Time, ActiveSupport::TimeWithZone]
 
-      class_attribute :subclasses
+      class_attribute :subclasses, default: []
 
       def self.inherited(base)
         super(base)
-        self.subclasses ||= []
         self.subclasses << base
       end
 

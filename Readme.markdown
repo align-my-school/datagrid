@@ -1,12 +1,12 @@
 # Datagrid
 
-[![Build Status](https://travis-ci.org/bogdan/datagrid.svg?branch=master)](https://travis-ci.org/bogdan/datagrid)
+[![Build Status](https://github.com/bogdan/datagrid/workflows/CI/badge.svg?branch=master)](https://github.com/bogdan/datagrid/actions)
 
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fbogdan%2Fdatagrid.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fbogdan%2Fdatagrid?ref=badge_shield)
 
-Ruby library that helps you to build and represent table-like data with:
+A really mighty and flexible ruby library that generates reports including admin panels, analytics and data representation:
 
-* Customizable filtering
+* Filtering
 * Columns
 * Sort order
 * Localization
@@ -27,7 +27,7 @@ Ruby library that helps you to build and represent table-like data with:
 
 * [Readme](/Readme.markdown) - this read-me for basic information
 * [Wiki](https://github.com/bogdan/datagrid/wiki) - general reference on how to use the gem
-* [Rdoc](https://rdoc.info/github/bogdan/datagrid) - API reference
+* [Rdoc](https://rubydoc.info/gems/datagrid) - API reference
 
 ### Live Demo
 
@@ -54,7 +54,7 @@ class UsersGrid
   filter(:group_id, :integer, multiple: true)
   filter(:logins_count, :integer, range: true)
   filter(:group_name, :string, header: "Group") do |value|
-    self.joins(:group).where(:groups => {:name => value})
+    self.joins(:group).where(groups: {name: value})
   end
 
   column(:name)
@@ -72,11 +72,11 @@ Basic grid api:
 
 ``` ruby
 report = UsersGrid.new(
-  :group_id => [1,2], 
-  :logins_count => [1, nil],
-  :category => "first",
-  :order => :group,
-  :descending => true
+  group_id: [1,2], 
+  logins_count: [1, nil],
+  category: "first",
+  order: :group,
+  descending: true
 )
 
 report.assets # => Array of User instances:
@@ -145,7 +145,7 @@ Datagrid supports different type of filters including:
 Each column is represented by name and code block to calculate the value.
 
 ``` ruby
-column(:activated, :header => "Active", :order => "activated", :after => :name) do
+column(:activated, header: "Active", order: "activated", after: :name) do
   self.activated?
 end
 ```

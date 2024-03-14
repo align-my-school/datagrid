@@ -6,8 +6,8 @@ if defined?(MongoMapper)
     key :group_id, Integer
     key :name, String
     key :category, String
-    key :disabled, Boolean, :default => false
-    key :confirmed, Boolean, :default => false
+    key :disabled, Boolean, default: false
+    key :confirmed, Boolean, default: false
     key :shipping_date, Time
     timestamps!
 
@@ -21,7 +21,7 @@ if defined?(MongoMapper)
     end
 
     filter :name
-    integer_range_filters(:group_id, {:default => 0}, {:default => 100})
+    filter(:group_id, range: true, default: [0, 100])
     filter :disabled, :xboolean
 
     column :name

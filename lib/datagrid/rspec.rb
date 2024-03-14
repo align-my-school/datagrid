@@ -32,21 +32,21 @@ shared_examples_for "Datagrid" do
       describe "filter ##{filter.name}" do
 
         let(:filter_value) do
-          
+
           case Datagrid::Filters::FILTER_TYPES.invert[filter.class]
           when :default, :string
             "text"
           when :date
             1.day.ago
-          when :xboolean, :eboolean
-            Datagrid::Filters::BooleanEnumFilter::YES
+          when :xboolean
+            Datagrid::Filters::ExtendedBooleanFilter::YES
           when :boolean
             true
           when :integer
             1
           when :enum
             select = subject.select_options(filter)
-            select.first.try(:last)
+            select.first&.last
           else
             raise "unknown filter type: #{filter.class}"
           end.to_s
@@ -54,11 +54,11 @@ shared_examples_for "Datagrid" do
 
         before(:each) do
           subject.attributes = {filter.name => filter_value}
-          subject.send(filter.name).should_not be_nil
+          subject.public_send(filter.name).should_not be_nil
         end
 
         it "should be supported" do
-          subject.assets.should_not be_nil 
+          subject.assets.should_not be_nil
           #TODO: better matcher.
         end
       end
