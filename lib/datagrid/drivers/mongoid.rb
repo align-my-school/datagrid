@@ -26,9 +26,9 @@ module Datagrid
         end
 
         #--- custom modification by chris
-        # if value.respond_to?(:any?) && value.any?
-        #   value = { '$in': value}
-        # end
+        if value.respond_to?(:any?) && value.any?
+          value = { '$in': value}
+        end
         #--- custom modification by chris
 
         scope.where(attribute => value)
