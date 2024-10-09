@@ -10,11 +10,8 @@ module Datagrid
     #   * <tt>text_field</tt> for other filter types
     def datagrid_filter(filter_or_attribute, partials: nil, **options, &block)
       filter = datagrid_get_filter(filter_or_attribute)
-      options = {
-        **filter.input_options,
-        **add_html_classes(options, filter.name, datagrid_filter_html_class(filter)),
-      }
-      self.send(filter.form_builder_helper_name, filter, options, &block)
+      options = add_html_classes({**filter.input_options, **options}, filter.name, datagrid_filter_html_class(filter))
+      self.send( filter.form_builder_helper_name, filter, **options, &block)
     end
 
     # @param filter_or_attribute [Datagrid::Filters::BaseFilter, String, Symbol] filter object or filter name
@@ -28,7 +25,12 @@ module Datagrid
 
     def datagrid_filter_input(attribute_or_filter, **options)
       filter = datagrid_get_filter(attribute_or_filter)
-      text_field filter.name, value: object.filter_value_as_string(filter), **options
+      value = object.filter_value_as_string(filter)
+      if options[:type]&.to_sym == :textarea
+        text_area filter.name, value: value, **options, type: nil
+      else
+        text_field filter.name, value: value, **options
+      end
     end
 
     protected
@@ -87,7 +89,7 @@ module Datagrid
     end
 
     def enum_checkbox_checked?(filter, option_value)
-      current_value = object.send(filter.name)
+      current_value = object.public_send(filter.name)
       if current_value.respond_to?(:include?)
         # Typecast everything to string
         # to remove difference between String and Symbol
@@ -164,7 +166,7 @@ module Datagrid
     def datagrid_range_filter_options(object, filter, type, options)
       type_method_map = {from: :first, to: :last}
       options = add_html_classes(options, type)
-      options[:value] = filter.format(object[filter.name].try(type_method_map[type]))
+      options[:value] = filter.format(object[filter.name]&.public_send(type_method_map[type]))
       # In case of datagrid ranged filter
       # from and to input will have same id
       if !options.key?(:id)

@@ -4,7 +4,10 @@ module Datagrid
     class Array < AbstractDriver
 
       def self.match?(scope)
-        !Datagrid::Drivers::ActiveRecord.match?(scope) && (scope.is_a?(::Array) || scope.is_a?(Enumerator))
+        !Datagrid::Drivers::ActiveRecord.match?(scope) && (
+          scope.is_a?(::Array) || scope.is_a?(Enumerator) ||
+          (defined?(::ActiveRecord::Result) && scope.is_a?(::ActiveRecord::Result))
+        )
       end
 
       def to_scope(scope)
@@ -13,7 +16,7 @@ module Datagrid
 
       def where(scope, attribute, value)
         scope.select do |object|
-          object.send(attribute) == value
+          object.public_send(attribute) == value
         end
       end
 
@@ -21,7 +24,7 @@ module Datagrid
         return scope unless order
         return scope if order.empty?
         scope.sort_by do |object|
-          object.send(order)
+          object.public_send(order)
         end
       end
 
@@ -39,15 +42,13 @@ module Datagrid
 
       def greater_equal(scope, field, value)
         scope.select do |object|
-          compare_value = object.send(field)
-          compare_value.respond_to?(:>=) && compare_value >= value
+          object.public_send(field) >= value
         end
       end
 
       def less_equal(scope, field, value)
         scope.select do |object|
-          compare_value = object.send(field)
-          compare_value.respond_to?(:<=) && compare_value <= value
+          object.public_send(field) <= value
         end
       end
 
@@ -57,12 +58,12 @@ module Datagrid
 
       def is_timestamp?(scope, column_name)
         has_column?(scope, column_name) &&
-          timestamp_class?(scope.first.send(column_name).class)
+          timestamp_class?(scope.first.public_send(column_name).class)
       end
 
       def contains(scope, field, value)
         scope.select do |object|
-          object.send(field).to_s.include?(value)
+          object.public_send(field).to_s.include?(value)
         end
       end
 

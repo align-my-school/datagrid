@@ -155,7 +155,7 @@ class Datagrid::Filters::BaseFilter
     when String
       value.split(separator)
     when Range
-      [value.first, value.last]
+      [value.begin, value.end]
     when Array
       value
     else
@@ -173,8 +173,8 @@ class Datagrid::Filters::BaseFilter
 
   def default_filter(value, scope, grid)
     return nil if dummy?
-    if !driver.has_column?(scope, name) && scope.respond_to?(name)
-      scope.send(name, value)
+    if !driver.has_column?(scope, name) && scope.respond_to?(name, true)
+      scope.public_send(name, value)
     else
       default_filter_where(scope, value)
     end

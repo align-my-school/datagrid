@@ -46,7 +46,7 @@ shared_examples_for "Datagrid" do
             1
           when :enum
             select = subject.select_options(filter)
-            select.first.try(:last)
+            select.first&.last
           else
             raise "unknown filter type: #{filter.class}"
           end.to_s
@@ -54,7 +54,7 @@ shared_examples_for "Datagrid" do
 
         before(:each) do
           subject.attributes = {filter.name => filter_value}
-          subject.send(filter.name).should_not be_nil
+          subject.public_send(filter.name).should_not be_nil
         end
 
         it "should be supported" do

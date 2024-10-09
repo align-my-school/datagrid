@@ -7,8 +7,8 @@ Gem::Specification.new do |s|
   s.version = Datagrid::VERSION
   s.require_paths = ["lib"]
   s.authors = ["Bogdan Gusiev"]
-  s.summary = "Ruby gem to create datagrids"
-  s.description = "This allows you to easily build datagrid aka data tables with sortable columns and filters"
+  s.summary = "Library that provides DSL to present table like data"
+  s.description = "The library allows you to easily build datagrid aka data tables with sortable columns and filters"
   s.email = "agresso@gmail.com"
   s.extra_rdoc_files = [
     "LICENSE.txt",
@@ -32,6 +32,6 @@ Gem::Specification.new do |s|
     "source_code_uri" => s.homepage,
   }
 
-  s.add_dependency "railties", ">= 6.0"
+  s.add_dependency "railties", ">= 6.1"
 end
 
